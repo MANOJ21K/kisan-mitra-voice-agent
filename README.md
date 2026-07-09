@@ -19,21 +19,31 @@ sarvam-105b** — that scores tool selection, answer faithfulness, and latency (
 
 ---
 
-## Why this project
+## Why voice, and why this stack
 
-Built as targeted proof-of-work for Sarvam AI's **Applied AI Engineer** and **Forward
-Deployed Engineer** roles. It deliberately exercises every capability those JDs ask for:
+Most Indian farmers can't easily use a typed, English-first app: many are more
+comfortable speaking their own language than reading, and the information they need —
+today's mandi price, whether it's about to rain, what to do for a pest — is scattered
+across portals they never open. A **voice-first assistant in the farmer's own language**
+removes both barriers at once.
 
-| JD asks for | Where it lives here |
+Doing that well needs three things done together: accurate Indian-language speech,
+grounded tool-augmented reasoning, and low latency (a voice reply that lags feels broken).
+Sarvam's models cover all three natively — **Saaras** for speech, **Sarvam-30B** for
+tool-calling, **Bulbul** for natural TTS — so the whole loop stays in one stack instead of
+being stitched across vendors with a language gap at every seam.
+
+How the codebase is organised:
+
+| Concern | Where it lives |
 |---|---|
-| Deploy conversational agents across voice channels | full ASR→LLM→TTS voice loop (`app.py`, `src/pipeline.py`) |
-| Build MCP servers | `mcp_server/server.py` sharing one tool registry with the agent |
-| Agent runtime: state, retries, tool-calling, guardrails | explicit bounded loop in `src/agent.py` |
-| RAG / tool-calling / structured tools | JSON-schema tools + guarded dispatch in `src/tools.py` |
-| Integrate real external data | Open-Meteo + data.gov.in Agmarknet, with graceful error handling |
-| Streaming, cost & latency engineering | per-stage latency captured everywhere, shown in UI + eval |
-| Evaluation pipelines for AI systems | `eval/` — WER, tool accuracy, answer keywords, **LLM-as-judge**, p50/p95 |
-| Familiarity with Sarvam's own APIs | built directly on Saaras / Sarvam-30B / sarvam-105b / Bulbul / Translate |
+| End-to-end voice loop (ASR → LLM → TTS) | `app.py`, `src/pipeline.py` |
+| Agent runtime — bounded turns, tool dispatch, guardrails | `src/agent.py` |
+| Tools + JSON schemas + guarded dispatch (one registry) | `src/tools.py` |
+| Same tools exposed to external clients | `mcp_server/server.py` |
+| Real external data + graceful error handling | Open-Meteo, data.gov.in Agmarknet |
+| Latency as a first-class output | per-stage `ms` captured everywhere, shown in UI + eval |
+| Evaluation | `eval/` — WER, tool accuracy, answer keywords, LLM-as-judge, p50/p95 |
 
 Architecture diagram and design rationale: [docs/architecture.md](docs/architecture.md).
 Working conventions for contributors and AI agents: [CLAUDE.md](CLAUDE.md).

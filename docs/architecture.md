@@ -57,11 +57,11 @@ flowchart LR
 | `get_crop_advisory` | curated agronomy best-practice | reference |
 | `get_govt_scheme` | curated scheme facts (PM-Kisan, PMFBY, KCC, Soil Health) | reference |
 
-## Design choices worth defending in an interview
+## Design choices
 
 - **Explicit tool loop, not a framework.** The runtime (bounded turns, tool dispatch,
   results fed back, loop guard) is written out in `agent.py` so its failure modes are
-  visible and controllable — the "agent runtime" the Applied AI JD asks about.
+  visible and controllable, rather than hidden behind a framework abstraction.
 - **One tool registry, two consumers.** `tools.py` backs both the in-process agent and
   the MCP server, so there's no drift between what the agent can do and what an external
   client sees.

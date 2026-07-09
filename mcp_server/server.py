@@ -1,8 +1,8 @@
 """MCP server exposing the Kisan Mitra farmer-advisory tools.
 
 Any MCP client (Claude Desktop, Cursor, a custom agent) can mount this server and call
-the same four tools the in-process agent uses. This demonstrates the "build MCP servers"
-line in both target JDs — the tool logic is imported from src/tools.py, not duplicated.
+the same four tools the in-process agent uses. The tool logic is imported from
+src/tools.py, not duplicated, so the agent and external clients never drift apart.
 
 The directory is named mcp_server/ (not mcp/) so it can't shadow the installed `mcp`
 package this file imports from.

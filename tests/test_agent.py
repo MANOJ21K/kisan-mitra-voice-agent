@@ -1,8 +1,7 @@
 """Agent-loop tests with a fully mocked Sarvam/OpenAI client — no network, no key.
 
-Exercises the runtime that maps to the JD's "agent runtime" ask: tool dispatch
-round-trip, malformed tool-args handling, and the turn-cap guard. The tools it
-dispatches to are the curated ones (no network).
+Exercises the runtime: tool dispatch round-trip, malformed tool-args handling, and the
+turn-cap guard. The tools it dispatches to are the curated ones (no network).
 """
 from __future__ import annotations
 

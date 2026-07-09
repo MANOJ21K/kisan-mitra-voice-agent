@@ -2,8 +2,7 @@
 
 The loop is written out explicitly (rather than hidden behind a framework) so the
 runtime is visible: bounded turns, tool dispatch, tool results appended back, and a
-guard against runaway loops. This is the piece that maps to the "agent runtime" ask
-in the Applied AI Engineer JD.
+guard against runaway loops.
 """
 from __future__ import annotations
 
