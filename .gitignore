@@ -1,0 +1,24 @@
+# Secrets — never commit
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+
+# Virtualenvs
+.venv/
+venv/
+myenv/
+
+# App/runtime artifacts
+outputs/
+*.wav
+*.mp3
+.gradio/
+
+# OS / editor
+.DS_Store
+.claude/settings.local.json

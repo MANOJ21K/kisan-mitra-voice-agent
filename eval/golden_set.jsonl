@@ -1,0 +1,10 @@
+{"id": "mandi_tomato_kolar", "lang": "hi-IN", "query": "Aaj Kolar mandi mein tamatar ka bhaav kya hai?", "expect_tools": ["get_mandi_price"], "expect_keywords": ["1200", "Kolar"]}
+{"id": "mandi_onion_generic", "lang": "hi-IN", "query": "Pyaaz ka aaj ka daam bataiye", "expect_tools": ["get_mandi_price"], "expect_keywords": ["1800", "1400", "2000"]}
+{"id": "weather_spray", "lang": "hi-IN", "query": "Main Kolar mein hoon. Kya aaj apni fasal par dawa chhidak sakta hoon?", "expect_tools": ["get_weather"], "expect_keywords": ["rain", "baarish", "spray", "chhidak", "dry", "sukha", "kal"]}
+{"id": "crop_wheat_advisory", "lang": "en-IN", "query": "Any advice for my wheat crop this rabi season?", "expect_tools": ["get_crop_advisory"], "expect_keywords": ["irrigation", "nitrogen", "rust"]}
+{"id": "scheme_pmkisan", "lang": "hi-IN", "query": "PM Kisan yojana mein kitne paise milte hain?", "expect_tools": ["get_govt_scheme"], "expect_keywords": ["6000", "6,000", "2000", "2,000"]}
+{"id": "scheme_insurance", "lang": "en-IN", "query": "How do I insure my crop against flood damage?", "expect_tools": ["get_govt_scheme"], "expect_keywords": ["PMFBY", "Fasal", "premium", "insurance"]}
+{"id": "combo_weather_price", "lang": "en-IN", "query": "Should I sell my cotton now, and what's the weather like in Guntur?", "expect_tools": ["get_mandi_price", "get_weather"], "expect_keywords": ["7200", "Guntur"]}
+{"id": "crop_paddy_kn", "lang": "kn-IN", "query": "Kharif hangamalli nanna bhatta belege salahe kodi", "expect_tools": ["get_crop_advisory"], "expect_keywords": ["ನೀರು", "ನೀರಾವರಿ", "water", "ಸಾರಜನಕ", "nitrogen"]}
+{"id": "kcc_loan", "lang": "en-IN", "query": "I need a short term crop loan, what are my options?", "expect_tools": ["get_govt_scheme"], "expect_keywords": ["Kisan Credit", "KCC", "3 lakh", "4%"]}
+{"id": "no_tool_greeting", "lang": "hi-IN", "query": "Namaste, aap kaun hain?", "expect_tools": [], "expect_keywords": ["Kisan", "Mitra", "sahayak", "assistant", "farmer", "kisan"]}
