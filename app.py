@@ -89,4 +89,5 @@ with gr.Blocks(title="Kisan Mitra") as demo:
 if __name__ == "__main__":
     # Bind to the platform-provided port (Render/Cloud Run set $PORT); default for local.
     port = int(os.environ.get("PORT", os.environ.get("GRADIO_SERVER_PORT", 7860)))
-    demo.launch(server_name="0.0.0.0", server_port=port, theme=gr.themes.Soft())
+    demo.launch(server_name="0.0.0.0", server_port=port,
+                show_error=True, theme=gr.themes.Soft())
