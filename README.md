@@ -2,10 +2,13 @@
 
 A multilingual, voice-first advisory assistant for Indian farmers, built end-to-end on Sarvam AI's stack.
 
-[![CI](https://github.com/MANOJ21K/kisan-mitra-voice-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/MANOJ21K/kisan-mitra-voice-agent/actions/workflows/ci.yml)
+[![Live demo](https://img.shields.io/badge/demo-live-brightgreen.svg)](https://kisan-mitra-voice-agent.onrender.com/)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Built on Sarvam AI](https://img.shields.io/badge/built%20on-Sarvam%20AI-orange.svg)](https://sarvam.ai)
+
+**🔗 Live demo:** https://kisan-mitra-voice-agent.onrender.com/
+*(free tier — the first request after idle takes ~50s to wake the server)*
 
 A farmer speaks a question in their own language — Hindi, Kannada, Tamil, and more — and
 hears a spoken answer back in the same language. Under the hood, one Sarvam pipeline
@@ -137,18 +140,18 @@ curated reference data (stable facts, labelled as such in the tool output), not 
 
 ```bash
 pip install ruff pytest
-ruff check .        # lint
-pytest -q           # 35 tests — network and LLM mocked, no API key needed
+ruff check .            # lint
+python eval/metrics.py  # key-free metrics self-test
+pytest -q               # 35 tests — network and LLM mocked, no API key needed
 ```
 
-Every push and pull request runs `ruff` + the metrics self-test + `pytest` on Python 3.11
-and 3.12 via [GitHub Actions](.github/workflows/ci.yml).
+The suite is network-free and key-free (mocked APIs and LLM), so it runs anywhere without credentials.
 
 ## Project structure
 
 ```
 kisan-mitra-voice-agent/
-├── app.py                 # Gradio voice UI — Hugging Face Spaces entry point
+├── app.py                 # Gradio voice UI — app entry point
 ├── src/
 │   ├── config.py          # keys, base URLs, model ids, languages, data-source config
 │   ├── sarvam_client.py   # Saaras STT · Bulbul TTS · Translate (each returns latency)
@@ -165,18 +168,21 @@ kisan-mitra-voice-agent/
 ├── docs/architecture.md   # diagram + design rationale
 ├── CLAUDE.md              # conventions for contributors and AI agents
 ├── Dockerfile
-└── .github/workflows/ci.yml
+└── render.yaml            # one-click Render deploy blueprint
 ```
 
 See [docs/architecture.md](docs/architecture.md) for the full diagram and design rationale.
 
 ## Deployment
 
-### Hugging Face Spaces
+The live demo runs on Render's free tier, deployed from the `Dockerfile` via `render.yaml`.
 
-1. Create a **Gradio** Space and push this repo.
-2. Add `SARVAM_API_KEY` (and optionally `DATA_GOV_IN_API_KEY`) as Space **secrets**.
-3. Spaces runs `app.py` automatically — no extra config needed.
+### Render (one-click blueprint)
+
+1. On [Render](https://render.com): **New +** → **Blueprint** → connect this repo.
+2. Render reads `render.yaml` and provisions the `kisan-mitra` web service.
+3. Set `SARVAM_API_KEY` (and optionally `DATA_GOV_IN_API_KEY`) as environment variables when prompted.
+4. Apply — Render builds the Docker image and serves the app. The free plan sleeps after 15 min idle and cold-starts on the next request.
 
 ### Docker
 
