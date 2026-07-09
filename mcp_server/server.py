@@ -4,15 +4,18 @@ Any MCP client (Claude Desktop, Cursor, a custom agent) can mount this server an
 the same four tools the in-process agent uses. This demonstrates the "build MCP servers"
 line in both target JDs — the tool logic is imported from src/tools.py, not duplicated.
 
-Run:  python mcp/server.py         (stdio transport)
-Register in an MCP client's config with command="python", args=["mcp/server.py"].
+The directory is named mcp_server/ (not mcp/) so it can't shadow the installed `mcp`
+package this file imports from.
+
+Run:  python mcp_server/server.py         (stdio transport)
+Register in an MCP client's config with command="python", args=["mcp_server/server.py"].
 """
 from __future__ import annotations
 
 import os
 import sys
 
-# Allow "python mcp/server.py" from the repo root to import src/.
+# Allow "python mcp_server/server.py" from the repo root to import src/.
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from mcp.server.fastmcp import FastMCP  # noqa: E402

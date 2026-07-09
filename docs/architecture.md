@@ -2,7 +2,8 @@
 
 Kisan Mitra is a single-turn (optionally multi-turn) voice agent. One spoken question
 flows through three Sarvam models and a bounded tool-calling loop, and comes back as
-speech — with latency measured at every hop.
+speech — with latency measured at every hop. Two of the four tools call live public
+data sources; the other two serve curated reference data.
 
 ```mermaid
 flowchart LR
@@ -23,10 +24,15 @@ flowchart LR
     AGENT -->|reply text| TTS
     TTS -->|audio| U
 
-    TOOLS -.->|same registry| MCP[[MCP server<br/>mcp/server.py]]
+    TOOLS -->|get_weather| OM([Open-Meteo<br/>live forecast])
+    TOOLS -->|get_mandi_price| AG([data.gov.in<br/>Agmarknet live])
+    TOOLS -.->|advisory / schemes| REF([curated reference])
+
+    TOOLS -.->|same registry| MCP[[MCP server<br/>mcp_server/server.py]]
     MCP -.-> EXT([Claude Desktop /<br/>Cursor / any MCP client])
 
-    STT & LLM & TTS -->|per-stage ms| EVAL[[Eval harness<br/>eval/run_eval.py<br/>WER · tool acc · p50/p95]]
+    STT & LLM & TTS -->|per-stage ms| EVAL[[Eval harness<br/>eval/run_eval.py]]
+    EVAL -->|grades replies| JUDGE([sarvam-105b<br/>LLM-as-judge])
 ```
 
 ## The pieces
@@ -39,8 +45,17 @@ flowchart LR
 | Speech out | `src/sarvam_client.py` → `synthesize` | Bulbul v3, decodes base64 audio + ms |
 | Orchestration | `src/pipeline.py` | wires the three stages, captures asr/llm/tts/total ms |
 | UI | `app.py` | Gradio mic + text tabs; HF Spaces entry point |
-| MCP | `mcp/server.py` | exposes the same tools to external MCP clients |
-| Eval | `eval/` | WER, tool accuracy, answer accuracy, latency p50/p95 |
+| MCP | `mcp_server/server.py` | exposes the same tools to external MCP clients |
+| Eval | `eval/` | WER, tool accuracy, answer keywords, latency p50/p95, LLM-as-judge |
+
+## Data sources
+
+| Tool | Source | Live? |
+|---|---|---|
+| `get_weather` | Open-Meteo geocoding + forecast (keyless) | live |
+| `get_mandi_price` | data.gov.in Agmarknet daily mandi feed (free key) | live |
+| `get_crop_advisory` | curated agronomy best-practice | reference |
+| `get_govt_scheme` | curated scheme facts (PM-Kisan, PMFBY, KCC, Soil Health) | reference |
 
 ## Design choices worth defending in an interview
 
@@ -50,8 +65,11 @@ flowchart LR
 - **One tool registry, two consumers.** `tools.py` backs both the in-process agent and
   the MCP server, so there's no drift between what the agent can do and what an external
   client sees.
+- **Tools never raise.** Every tool returns a dict, `{"error": ...}` on failure, so a
+  flaky upstream API degrades gracefully into an honest spoken reply instead of a crash.
 - **Latency is a first-class output.** Every stage returns `(result, ms)`; the UI shows
   it and the eval harness aggregates p50/p95 — because a voice agent lives or dies on it.
-- **Evals from day one.** `eval/metrics.py` is key-free and self-testing; `run_eval.py`
-  scores tool selection, grounded-answer accuracy, and latency over a golden set.
-```
+- **Evals from day one, and Sarvam-native.** `eval/metrics.py` is key-free and
+  self-testing; `run_eval.py` scores tool selection, grounded answers, and latency; a
+  stronger Sarvam model (sarvam-105b) acts as LLM-as-judge on faithfulness and
+  spoken-friendliness (`eval/judge.py`).
