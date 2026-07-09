@@ -1,0 +1,13 @@
+# Render blueprint — one-click deploy of the Gradio app from the Dockerfile.
+# New + → Blueprint → pick this repo → set SARVAM_API_KEY when prompted.
+services:
+  - type: web
+    name: kisan-mitra
+    runtime: docker
+    plan: free
+    healthCheckPath: /
+    envVars:
+      - key: SARVAM_API_KEY
+        sync: false           # set in the Render dashboard (secret)
+      - key: DATA_GOV_IN_API_KEY
+        sync: false           # optional; falls back to a rate-limited sample key

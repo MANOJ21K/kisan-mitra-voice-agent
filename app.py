@@ -1,4 +1,4 @@
-"""Kisan Mitra — Gradio voice UI. This is the Hugging Face Spaces entry point.
+"""Kisan Mitra — Gradio voice UI and app entry point.
 
 Speak (or type) a question; the app runs the full Saaras -> Sarvam-30B (+tools) -> Bulbul
 pipeline and shows the transcript, the spoken reply, which tools fired, and the
@@ -6,6 +6,7 @@ per-stage latency so the engineering is visible, not hidden.
 """
 from __future__ import annotations
 
+import os
 import tempfile
 
 import gradio as gr
@@ -86,4 +87,6 @@ with gr.Blocks(title="Kisan Mitra") as demo:
     )
 
 if __name__ == "__main__":
-    demo.launch(theme=gr.themes.Soft())
+    # Bind to the platform-provided port (Render/Cloud Run set $PORT); default for local.
+    port = int(os.environ.get("PORT", os.environ.get("GRADIO_SERVER_PORT", 7860)))
+    demo.launch(server_name="0.0.0.0", server_port=port, theme=gr.themes.Soft())
