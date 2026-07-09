@@ -1,0 +1,43 @@
+[project]
+name = "kisan-mitra-voice-agent"
+version = "1.0.0"
+description = "Multilingual farmer-advisory voice agent built end-to-end on Sarvam AI (Saaras STT, Sarvam-30B tool-calling, Bulbul TTS), with an MCP server and an eval harness."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.11"
+authors = [{ name = "Manoj Kumar" }]
+keywords = ["sarvam", "voice-agent", "mcp", "llm-eval", "agritech", "indic-nlp"]
+
+dependencies = [
+    "sarvamai>=0.1.0",
+    "openai>=1.40.0",
+    "mcp>=1.2.0",
+    "gradio>=4.44.0",
+    "python-dotenv>=1.0.0",
+    "requests>=2.31.0",
+    "numpy>=1.26.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "ruff>=0.5.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/MANOJ21K/kisan-mitra-voice-agent"
+
+[tool.setuptools.packages.find]
+include = ["src*", "mcp_server*", "eval*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = ["E501"]  # long lines tolerated in data/schema literals
