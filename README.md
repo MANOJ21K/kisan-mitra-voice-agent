@@ -15,8 +15,6 @@ Weather and mandi prices come from **live public APIs**. It ships with an **MCP 
 exposing the same tools and an **eval harness** — including an **LLM-as-judge on
 sarvam-105b** — that scores tool selection, answer faithfulness, and latency (p50/p95).
 
-<!-- Add after deploy:  🔗 Live demo: https://huggingface.co/spaces/<you>/kisan-mitra  ·  📹 90-sec walkthrough: <link> -->
-
 ---
 
 ## Why voice, and why this stack
@@ -177,10 +175,9 @@ kisan-mitra-voice-agent/
 ## Deploy
 
 ### Hugging Face Spaces
-1. Create a **Gradio** Space, push this repo.
+1. Create a **Gradio** Space and push this repo.
 2. Add `SARVAM_API_KEY` (and optionally `DATA_GOV_IN_API_KEY`) as Space **secrets**.
-3. Spaces runs `app.py` automatically. Drop the live URL + a short demo video at the top
-   of this README and in the LinkedIn post.
+3. Spaces runs `app.py` automatically — no extra config needed.
 
 ### Docker
 ```bash
