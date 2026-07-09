@@ -1,103 +1,92 @@
-# 🌾 Kisan Mitra — a multilingual voice agent on Sarvam's stack
+# Kisan Mitra 🌾
+
+A multilingual, voice-first advisory assistant for Indian farmers, built end-to-end on Sarvam AI's stack.
 
 [![CI](https://github.com/MANOJ21K/kisan-mitra-voice-agent/actions/workflows/ci.yml/badge.svg)](https://github.com/MANOJ21K/kisan-mitra-voice-agent/actions/workflows/ci.yml)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Built on Sarvam AI](https://img.shields.io/badge/built%20on-Sarvam%20AI-orange.svg)](https://sarvam.ai)
 
-A spoken farmer-advisory assistant built end-to-end on **Sarvam AI**'s own models:
+A farmer speaks a question in their own language — Hindi, Kannada, Tamil, and more — and
+hears a spoken answer back in the same language. Under the hood, one Sarvam pipeline
+handles the whole loop:
 
-> **Saaras v3** (speech-to-text) → **Sarvam-30B** (reasoning + tool-calling) → **Bulbul v3** (text-to-speech)
+```
+Saaras v3 (speech-to-text) → Sarvam-30B (reasoning + tool-calling) → Bulbul v3 (text-to-speech)
+```
 
-Ask — by voice, in Hindi / Kannada / Tamil / … — about **mandi prices, weather,
-crop advice, or government schemes**, and get a spoken reply in the same language.
-Weather and mandi prices come from **live public APIs**. It ships with an **MCP server**
-exposing the same tools and an **eval harness** — including an **LLM-as-judge on
-sarvam-105b** — that scores tool selection, answer faithfulness, and latency (p50/p95).
+The assistant answers questions about **mandi (market) prices, weather, crop advice, and
+government schemes** — grounding each answer in a tool call rather than guessing. Weather
+and prices come from live public APIs; the whole thing runs on Sarvam's own models so
+Indian-language speech, reasoning, and speech synthesis stay in a single stack.
 
----
+## Features
 
-## Why voice, and why this stack
+- **Full voice loop** — speech in, speech out, in the farmer's own language (7 languages).
+- **Grounded tool-calling agent** — an explicit, bounded loop over Sarvam-30B that calls tools instead of hallucinating prices or dates.
+- **Live data** — real weather (Open-Meteo) and real mandi prices (data.gov.in Agmarknet), with graceful `{error: ...}` fallback when an upstream API is down.
+- **MCP server** — the same four tools exposed over the Model Context Protocol for any MCP client (Claude Desktop, Cursor, custom agents).
+- **Evaluation harness** — tool-selection accuracy, grounded-answer keywords, WER, latency p50/p95, and an **LLM-as-judge on sarvam-105b** scoring faithfulness and spoken-friendliness.
+- **Latency as a first-class metric** — every stage is timed and surfaced in both the UI and the eval report.
+- **Tested and CI-gated** — 35 unit tests (network and LLM fully mocked), linted and run on Python 3.11 and 3.12.
 
-Most Indian farmers can't easily use a typed, English-first app: many are more
-comfortable speaking their own language than reading, and the information they need —
-today's mandi price, whether it's about to rain, what to do for a pest — is scattered
-across portals they never open. A **voice-first assistant in the farmer's own language**
-removes both barriers at once.
+## Prerequisites
 
-Doing that well needs three things done together: accurate Indian-language speech,
-grounded tool-augmented reasoning, and low latency (a voice reply that lags feels broken).
-Sarvam's models cover all three natively — **Saaras** for speech, **Sarvam-30B** for
-tool-calling, **Bulbul** for natural TTS — so the whole loop stays in one stack instead of
-being stitched across vendors with a language gap at every seam.
+- Python 3.11 or newer
+- A **Sarvam AI API key** — free tier at [dashboard.sarvam.ai](https://dashboard.sarvam.ai) (required for speech, LLM, and TTS)
+- *(Optional)* a free **data.gov.in API key** for reliable live mandi prices — the app ships with a public sample key that works but is rate-limited
 
-How the codebase is organised:
-
-| Concern | Where it lives |
-|---|---|
-| End-to-end voice loop (ASR → LLM → TTS) | `app.py`, `src/pipeline.py` |
-| Agent runtime — bounded turns, tool dispatch, guardrails | `src/agent.py` |
-| Tools + JSON schemas + guarded dispatch (one registry) | `src/tools.py` |
-| Same tools exposed to external clients | `mcp_server/server.py` |
-| Real external data + graceful error handling | Open-Meteo, data.gov.in Agmarknet |
-| Latency as a first-class output | per-stage `ms` captured everywhere, shown in UI + eval |
-| Evaluation | `eval/` — WER, tool accuracy, answer keywords, LLM-as-judge, p50/p95 |
-
-Architecture diagram and design rationale: [docs/architecture.md](docs/architecture.md).
-Working conventions for contributors and AI agents: [CLAUDE.md](CLAUDE.md).
-
----
-
-## Data sources
-
-| Tool | Source | Live? |
-|---|---|---|
-| `get_weather` | [Open-Meteo](https://open-meteo.com) geocoding + forecast (keyless) | **live** |
-| `get_mandi_price` | [data.gov.in Agmarknet](https://data.gov.in) daily mandi feed (free key) | **live** |
-| `get_crop_advisory` | curated agronomy best-practice | reference |
-| `get_govt_scheme` | curated scheme facts (PM-Kisan, PMFBY, KCC, Soil Health) | reference |
-
-The **speech, language understanding, and agent stack are live Sarvam APIs.** Weather and
-mandi prices are **live third-party feeds**; if an upstream API is unreachable the tool
-returns a clear error the assistant relays honestly (it never invents a price). Crop
-advisory and scheme details are **curated reference data** — stable facts, labelled as
-such in the tool output — not a live feed.
-
----
-
-## Quickstart
+## Installation
 
 ```bash
 git clone https://github.com/MANOJ21K/kisan-mitra-voice-agent
 cd kisan-mitra-voice-agent
+
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 
-cp .env.example .env          # then paste your key from dashboard.sarvam.ai
+cp .env.example .env    # then add your SARVAM_API_KEY
 ```
 
-**Keys.** `SARVAM_API_KEY` is required (speech + LLM + TTS). Live mandi prices use a
-`DATA_GOV_IN_API_KEY` from [data.gov.in](https://data.gov.in) — optional: the app ships
-with a public sample key that works but is heavily rate-limited, so register your own free
-key for reliable prices. Weather needs no key.
+`.env` keys:
+
+| Variable | Required | Purpose |
+|---|---|---|
+| `SARVAM_API_KEY` | yes | Saaras STT, Sarvam-30B, Bulbul TTS |
+| `DATA_GOV_IN_API_KEY` | no | live mandi prices (falls back to a rate-limited sample key) |
+
+## Usage
 
 ### Run the voice app
+
 ```bash
-python app.py                 # opens the Gradio UI (mic + text tabs)
+python app.py
 ```
 
-### Try the agent from the CLI
+Opens a Gradio UI with a microphone tab and a text tab. Each turn shows the transcript,
+the spoken reply, which tools fired, and the per-stage latency.
+
+### Query the agent from the CLI
+
 ```bash
 python -m src.agent "Aaj Kolar mandi mein tamatar ka bhaav kya hai?"
 ```
 
+```
+Q: Aaj Kolar mandi mein tamatar ka bhaav kya hai?
+Tools: ['get_mandi_price']
+A: Kolar mandi mein aaj tamatar ka modal bhaav 1200 rupaye prati quintal hai …
+LLM latency: 1768 ms over 2 turn(s)
+```
+
 ### Run the MCP server
+
 ```bash
-python mcp_server/server.py   # stdio; mount from Claude Desktop / Cursor / any MCP client
+python mcp_server/server.py    # stdio transport
 ```
 
 <details>
-<summary>Claude Desktop MCP config snippet</summary>
+<summary>Claude Desktop config</summary>
 
 ```json
 {
@@ -111,77 +100,104 @@ python mcp_server/server.py   # stdio; mount from Claude Desktop / Cursor / any 
 ```
 </details>
 
-### Run the evals
+### Run the evaluation harness
+
 ```bash
 python eval/metrics.py                  # key-free self-test of WER + percentile maths
-python eval/run_eval.py                 # full run over the golden set (needs SARVAM_API_KEY)
+python eval/run_eval.py                 # tool + answer accuracy + latency (needs SARVAM_API_KEY)
 python eval/run_eval.py --judge --n 5   # add sarvam-105b LLM-as-judge, first 5 cases
-python eval/run_eval.py --speak         # include TTS latency
+python eval/run_eval.py --speak         # also measure TTS latency
 ```
 
-Sample eval output:
 ```
+Kisan Mitra eval — 12 cases
 tool accuracy        : 11/12  (92%)
 answer accuracy      : 10/12  (83%)
 judge faithfulness   : mean 4.6/5 · min 3/5  (sarvam-105b)
 judge spoken-friendly: mean 4.8/5 · min 4/5
 LLM latency          : p50 620 ms · p95 1180 ms · max 1400 ms
-total latency        : p50 640 ms · p95 1200 ms
 ```
 *(illustrative — real numbers depend on your key, region, and network)*
 
----
+## Data sources
 
-## Tests & CI
+| Tool | Source | Live? |
+|---|---|---|
+| `get_weather` | [Open-Meteo](https://open-meteo.com) geocoding + forecast (keyless) | live |
+| `get_mandi_price` | [data.gov.in Agmarknet](https://data.gov.in) daily mandi feed (free key) | live |
+| `get_crop_advisory` | curated agronomy best-practice | reference |
+| `get_govt_scheme` | curated scheme facts (PM-Kisan, PMFBY, KCC, Soil Health) | reference |
+
+The speech and agent stack are live Sarvam APIs. Weather and mandi prices are live
+third-party feeds — if an upstream API is unreachable the tool returns a clear error the
+assistant relays honestly, never an invented price. Crop advisory and scheme details are
+curated reference data (stable facts, labelled as such in the tool output), not a live feed.
+
+## Testing
 
 ```bash
 pip install ruff pytest
 ruff check .        # lint
-pytest -q           # 35 tests — all network-free and key-free (mocked APIs + LLM)
+pytest -q           # 35 tests — network and LLM mocked, no API key needed
 ```
 
-Every push and PR runs **ruff + the metrics self-test + pytest** on Python 3.11 and 3.12
-via [GitHub Actions](.github/workflows/ci.yml). Tests mock the network and the Sarvam
-client, so CI needs no API key.
+Every push and pull request runs `ruff` + the metrics self-test + `pytest` on Python 3.11
+and 3.12 via [GitHub Actions](.github/workflows/ci.yml).
 
----
-
-## Layout
+## Project structure
 
 ```
 kisan-mitra-voice-agent/
-├── app.py                 # Gradio voice UI — HF Spaces entry point
+├── app.py                 # Gradio voice UI — Hugging Face Spaces entry point
 ├── src/
-│   ├── config.py          # key, base URLs, model ids, languages, data-source config
+│   ├── config.py          # keys, base URLs, model ids, languages, data-source config
 │   ├── sarvam_client.py   # Saaras STT · Bulbul TTS · Translate (each returns latency)
-│   ├── tools.py           # 4 farmer tools + schemas + dispatch (one registry)
+│   ├── tools.py           # 4 farmer tools + schemas + dispatch (single registry)
 │   ├── agent.py           # Sarvam-30B tool-calling loop (the agent runtime)
-│   └── pipeline.py        # audio→STT→agent→TTS, per-stage timing
+│   └── pipeline.py        # audio → STT → agent → TTS, per-stage timing
 ├── mcp_server/server.py   # MCP server exposing the same tools
 ├── eval/
 │   ├── metrics.py         # WER + latency percentiles (key-free, self-testing)
-│   ├── judge.py           # LLM-as-judge on sarvam-105b (faithfulness + spoken-friendliness)
+│   ├── judge.py           # LLM-as-judge on sarvam-105b
 │   ├── run_eval.py        # golden-set runner (--judge, --speak, --n)
 │   └── golden_set.jsonl   # 12 labelled test cases (incl. edge cases)
 ├── tests/                 # 35 pytest tests — mocked network + LLM, no key
 ├── docs/architecture.md   # diagram + design rationale
-├── CLAUDE.md              # conventions for AI agents / contributors
-├── Dockerfile             # container image for the Gradio app
+├── CLAUDE.md              # conventions for contributors and AI agents
+├── Dockerfile
 └── .github/workflows/ci.yml
 ```
 
----
+See [docs/architecture.md](docs/architecture.md) for the full diagram and design rationale.
 
-## Deploy
+## Deployment
 
 ### Hugging Face Spaces
+
 1. Create a **Gradio** Space and push this repo.
 2. Add `SARVAM_API_KEY` (and optionally `DATA_GOV_IN_API_KEY`) as Space **secrets**.
 3. Spaces runs `app.py` automatically — no extra config needed.
 
 ### Docker
+
 ```bash
 docker build -t kisan-mitra .
 docker run -p 7860:7860 -e SARVAM_API_KEY=sk_your_key kisan-mitra
 # open http://localhost:7860
 ```
+
+## Contributing
+
+Issues and pull requests are welcome. Before opening a PR, please run `ruff check .`,
+`pytest -q`, and `python eval/metrics.py` — all three must pass. Contributor and
+AI-agent conventions are documented in [CLAUDE.md](CLAUDE.md).
+
+## Acknowledgments
+
+- [Sarvam AI](https://sarvam.ai) — Saaras, Sarvam-30B, sarvam-105b, and Bulbul models
+- [Open-Meteo](https://open-meteo.com) — free weather forecasts
+- [data.gov.in](https://data.gov.in) — Agmarknet daily mandi price feed
+
+## License
+
+Released under the [MIT License](LICENSE).
