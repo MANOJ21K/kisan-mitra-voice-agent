@@ -9,6 +9,7 @@ Metrics:
 Usage:
   python eval/run_eval.py                 # text-in, quality + LLM latency
   python eval/run_eval.py --speak         # also synthesise replies (adds TTS latency)
+  python eval/run_eval.py --judge         # add LLM-as-judge scores (sarvam-105b)
   python eval/run_eval.py --n 5           # first N cases only (save credits)
 
 Needs SARVAM_API_KEY. The metrics module (eval/metrics.py) runs key-free on its own.
@@ -64,12 +65,17 @@ def keyword_hit(reply: str, keywords: list[str]) -> bool:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--speak", action="store_true", help="also run TTS (measures TTS latency)")
+    ap.add_argument("--judge", action="store_true", help="LLM-as-judge scoring (sarvam-105b)")
     ap.add_argument("--n", type=int, default=None, help="only the first N cases")
     args = ap.parse_args()
+
+    if args.judge:
+        from eval.judge import judge_reply
 
     cases = load_cases(args.n)
     tool_ok = ans_ok = 0
     llm_lat, tts_lat, total_lat, wers = [], [], [], []
+    faith_scores, spoken_scores = [], []
     rows = []
 
     for c in cases:
@@ -88,18 +94,31 @@ def main() -> None:
                 hyp, _ = transcribe(fh.read())
             wers.append(word_error_rate(c["reference"], hyp))
 
+        judge_cell = ""
+        if args.judge:
+            j = judge_reply(c["query"], turn.reply, turn.tool_results)
+            if j["faithfulness"] is not None:
+                faith_scores.append(j["faithfulness"])
+            if j["spoken_friendly"] is not None:
+                spoken_scores.append(j["spoken_friendly"])
+            judge_cell = f"F{j['faithfulness']}/S{j['spoken_friendly']}"
+
         rows.append((c["id"], "✓" if t_ok else "✗", "✓" if a_ok else "✗",
-                     f"{turn.llm_ms:.0f}", ",".join(turn.tools_used) or "-"))
+                     f"{turn.llm_ms:.0f}", judge_cell, ",".join(turn.tools_used) or "-"))
 
     n = len(cases)
-    print(f"\nKisan Mitra eval — {n} cases\n" + "=" * 62)
-    print(f"{'case':<22}{'tool':<6}{'ans':<6}{'llm_ms':<9}tools_used")
-    print("-" * 62)
+    print(f"\nKisan Mitra eval — {n} cases\n" + "=" * 72)
+    print(f"{'case':<22}{'tool':<6}{'ans':<6}{'llm_ms':<9}{'judge':<10}tools_used")
+    print("-" * 72)
     for r in rows:
-        print(f"{r[0]:<22}{r[1]:<6}{r[2]:<6}{r[3]:<9}{r[4]}")
-    print("-" * 62)
+        print(f"{r[0]:<22}{r[1]:<6}{r[2]:<6}{r[3]:<9}{r[4]:<10}{r[5]}")
+    print("-" * 72)
     print(f"tool accuracy   : {tool_ok}/{n}  ({100*tool_ok/n:.0f}%)")
     print(f"answer accuracy : {ans_ok}/{n}  ({100*ans_ok/n:.0f}%)")
+    if args.judge and faith_scores:
+        fs, ss = latency_stats(faith_scores), latency_stats(spoken_scores)
+        print(f"judge faithfulness   : mean {fs['mean']:.2f}/5 · min {min(faith_scores)}/5  (sarvam-105b)")
+        print(f"judge spoken-friendly: mean {ss['mean']:.2f}/5 · min {min(spoken_scores)}/5")
 
     ls = latency_stats(llm_lat)
     print(f"LLM latency     : p50 {ls['p50']:.0f} ms · p95 {ls['p95']:.0f} ms · max {ls['max']:.0f} ms")

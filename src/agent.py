@@ -50,6 +50,7 @@ def run_agent(user_text: str, history: list[dict] | None = None) -> dict:
     messages.append({"role": "user", "content": user_text})
 
     used_tools: list[str] = []
+    tool_results: list[dict] = []
     llm_ms = 0.0
 
     for _turn in range(MAX_TURNS):
@@ -81,6 +82,7 @@ def run_agent(user_text: str, history: list[dict] | None = None) -> dict:
             return {
                 "reply": (msg.content or "").strip(),
                 "tool_calls": used_tools,
+                "tool_results": tool_results,
                 "turns": _turn + 1,
                 "llm_ms": llm_ms,
             }
@@ -94,6 +96,7 @@ def run_agent(user_text: str, history: list[dict] | None = None) -> dict:
             except json.JSONDecodeError:
                 args = {}
             result = dispatch(name, args)
+            tool_results.append({"name": name, "args": args, "result": result})
             messages.append({
                 "role": "tool",
                 "tool_call_id": tc.id,
@@ -105,6 +108,7 @@ def run_agent(user_text: str, history: list[dict] | None = None) -> dict:
     return {
         "reply": "Sorry, I couldn't complete that. Please try rephrasing.",
         "tool_calls": used_tools,
+        "tool_results": tool_results,
         "turns": MAX_TURNS,
         "llm_ms": llm_ms,
     }

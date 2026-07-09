@@ -19,6 +19,7 @@ class Turn:
     reply: str = ""
     audio: bytes = b""
     tools_used: list[str] = field(default_factory=list)
+    tool_results: list[dict] = field(default_factory=list)
     asr_ms: float = 0.0
     llm_ms: float = 0.0
     tts_ms: float = 0.0
@@ -42,7 +43,7 @@ def run_voice_turn(audio: bytes, lang: str = config.DEFAULT_LANG,
     total_ms = (time.perf_counter() - t_start) * 1000.0
     return Turn(
         transcript=transcript, reply=reply, audio=reply_audio,
-        tools_used=agent_out["tool_calls"],
+        tools_used=agent_out["tool_calls"], tool_results=agent_out.get("tool_results", []),
         asr_ms=asr_ms, llm_ms=agent_out["llm_ms"], tts_ms=tts_ms, total_ms=total_ms,
     )
 
@@ -57,5 +58,6 @@ def run_text_turn(text: str, lang: str = config.DEFAULT_LANG,
     total_ms = (time.perf_counter() - t_start) * 1000.0
     return Turn(
         transcript=text, reply=reply, audio=audio, tools_used=agent_out["tool_calls"],
+        tool_results=agent_out.get("tool_results", []),
         asr_ms=0.0, llm_ms=agent_out["llm_ms"], tts_ms=tts_ms, total_ms=total_ms,
     )
