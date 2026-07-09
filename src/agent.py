@@ -43,8 +43,8 @@ def _oai_client() -> OpenAI:
 def run_agent(user_text: str, history: list[dict] | None = None) -> dict:
     """Run one user turn through the tool-calling loop.
 
-    Returns {reply, tool_calls, turns, llm_ms} where tool_calls lists the tools used
-    (useful for the eval harness to check tool-selection correctness).
+    Returns {reply, tool_calls, tool_results, turns, llm_ms}; tool_calls and tool_results
+    let the eval harness check tool selection and answer grounding.
     """
     client = _oai_client()
     messages: list[dict] = [{"role": "system", "content": SYSTEM_PROMPT}]

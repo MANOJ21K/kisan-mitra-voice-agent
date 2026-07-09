@@ -21,20 +21,13 @@ import requests
 
 from . import config
 
-# --- shared HTTP helper ----------------------------------------------------
-
 
 def _get_json(url: str, params: dict) -> dict:
-    """GET + parse JSON with a bounded timeout. Raises on HTTP/parse errors so
-    each caller can convert the failure into its own {"error": ...} dict."""
     resp = requests.get(url, params=params, timeout=config.HTTP_TIMEOUT_S)
     resp.raise_for_status()
     return resp.json()
 
 
-# --- weather: Open-Meteo ---------------------------------------------------
-
-# Condensed WMO weather-code -> human summary (Open-Meteo `weathercode`).
 _WMO = {
     0: "Clear sky", 1: "Mainly clear", 2: "Partly cloudy", 3: "Overcast",
     45: "Fog", 48: "Depositing rime fog",
@@ -105,16 +98,13 @@ def get_weather(location: str) -> dict:
         return {"location": place, "error": f"Weather service unavailable: {e}"}
 
 
-# --- mandi prices: data.gov.in Agmarknet -----------------------------------
-
-
 def get_mandi_price(commodity: str, market: str | None = None) -> dict:
     """Live wholesale mandi price (min/modal/max, INR per quintal) for a commodity,
     optionally at a specific market. Source: data.gov.in Agmarknet daily feed."""
     name = (commodity or "").strip()
     if not name:
         return {"error": "No commodity given."}
-    # Agmarknet commodity values are Title-Case ("Tomato", "Onion").
+    # Agmarknet matches commodity/market names in Title-Case.
     params = {
         "api-key": config.DATA_GOV_IN_API_KEY,
         "format": "json",
@@ -129,8 +119,7 @@ def get_mandi_price(commodity: str, market: str | None = None) -> dict:
         return {"commodity": name, "error": f"Mandi price service unavailable: {e}"}
 
     records = data.get("records") or []
-    # If a specific market was requested but returned nothing, retry unfiltered so
-    # the farmer still gets a nearby/representative price rather than a dead end.
+    # Fall back to an unfiltered lookup so a missing market doesn't dead-end the farmer.
     if not records and market:
         params.pop("filters[market]", None)
         try:
@@ -161,14 +150,12 @@ def get_mandi_price(commodity: str, market: str | None = None) -> dict:
 
 
 def _to_num(v):
-    """Agmarknet prices come as strings or ints depending on the row."""
+    # Agmarknet returns prices as strings or ints depending on the row.
     try:
         return int(float(v))
     except (TypeError, ValueError):
         return v
 
-
-# --- crop advisory: curated reference data ---------------------------------
 
 _CROP_ADVISORY = {
     "tomato": "Kharif tomato: watch for early blight in humid spells. Stake plants, "
@@ -193,8 +180,6 @@ def get_crop_advisory(crop: str, season: str | None = None) -> dict:
             "source": "curated reference"}
 
 
-# --- government schemes: curated reference data ----------------------------
-
 _SCHEMES = {
     "pm-kisan": "PM-KISAN: Rs 6,000/year to landholding farmers in three Rs 2,000 "
                 "instalments, paid directly to the Aadhaar-linked bank account.",
@@ -206,8 +191,7 @@ _SCHEMES = {
                    "nutrient and fertiliser recommendations.",
 }
 
-# Common ways a farmer phrases each scheme -> scheme key. Keeps the lookup robust
-# to natural queries ("crop loan", "flood damage") the way an intent layer would.
+# Natural phrasings ("crop loan", "flood damage") mapped to each scheme key.
 _SCHEME_ALIASES = {
     "pm-kisan": ["pm kisan", "pm-kisan", "pmkisan", "income support", "6000", "kisan samman"],
     "fasal bima": ["fasal bima", "pmfby", "insurance", "insure", "flood", "drought", "crop damage", "calamity"],
@@ -226,8 +210,7 @@ def get_govt_scheme(query: str) -> dict:
             "'PM-Kisan', 'Fasal Bima', 'KCC', or 'Soil Health'."}
 
 
-# --- registry: schemas + dispatch (one source of truth) --------------------
-
+# Single registry backing both the agent loop and the MCP server.
 REGISTRY = {
     "get_weather": {
         "fn": get_weather,
