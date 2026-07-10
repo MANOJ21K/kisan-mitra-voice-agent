@@ -117,17 +117,38 @@ def run_agent(user_text: str, history: list[dict] | None = None) -> dict:
     }
 
 
+STREAM_MAX_TOKENS = 300  # replies are 2-4 spoken sentences; bounds generation latency
+
+
 def run_agent_stream(user_text: str, history: list[dict] | None = None,
                      meta: dict | None = None):
-    """Streaming variant of run_agent for the live chat UI.
+    """Single-pass streaming agent for the live chat UI.
 
-    Resolves any tool calls first (non-streaming), then streams the final answer token by
-    token. Yields incremental text chunks (str). When the stream finishes it fills `meta`
-    (if provided) with tools_used, tool_results, and llm_ms so the caller can show the
-    latency/tools caption.
+    Streams the model call with tools attached. If the model calls tools, it runs them and
+    streams the follow-up answer; if it answers directly, those streamed tokens ARE the
+    answer (no wasted second round-trip). Yields ``(kind, text)`` events where kind is
+    "status" (tool activity, for a spinner) or "token" (answer text). Fills ``meta`` with
+    tools_used / tool_results / llm_ms. On any streaming or tool-parse failure it falls back
+    to the non-streaming ``run_agent`` and emits its reply as a single token.
     """
-    client = _oai_client()
     meta = meta if meta is not None else {}
+    emitted = False
+    try:
+        for kind, text in _stream_impl(user_text, history, meta):
+            emitted = emitted or kind == "token"
+            yield kind, text
+    except Exception:
+        if emitted:
+            return  # already streamed a partial answer — don't double up
+        out = run_agent(user_text, history=history)
+        meta["tools_used"] = out["tool_calls"]
+        meta["tool_results"] = out["tool_results"]
+        meta["llm_ms"] = out["llm_ms"]
+        yield "token", out["reply"]
+
+
+def _stream_impl(user_text: str, history: list[dict] | None, meta: dict):
+    client = _oai_client()
     messages: list[dict] = [{"role": "system", "content": SYSTEM_PROMPT}]
     if history:
         messages.extend(history)
@@ -137,60 +158,63 @@ def run_agent_stream(user_text: str, history: list[dict] | None = None,
     tool_results: list[dict] = []
     llm_ms = 0.0
 
-    # Phase A: resolve tool calls (non-streaming) until the model is ready to answer.
     for _turn in range(MAX_TURNS):
         t0 = time.perf_counter()
-        resp = client.chat.completions.create(
-            model=config.CHAT_MODEL, messages=messages,
-            tools=TOOL_SCHEMAS, tool_choice="auto", temperature=0.2,
+        stream = client.chat.completions.create(
+            model=config.CHAT_MODEL, messages=messages, tools=TOOL_SCHEMAS,
+            tool_choice="auto", temperature=0.2, max_tokens=STREAM_MAX_TOKENS, stream=True,
         )
+        content = ""
+        calls: dict[int, dict] = {}  # index -> {id, name, arguments} accumulated across deltas
+        for chunk in stream:
+            choices = getattr(chunk, "choices", None)
+            if not choices:
+                continue
+            delta = choices[0].delta
+            if getattr(delta, "content", None):
+                content += delta.content
+                yield "token", delta.content
+            for tc in (getattr(delta, "tool_calls", None) or []):
+                slot = calls.setdefault(getattr(tc, "index", 0),
+                                        {"id": None, "name": "", "arguments": ""})
+                if getattr(tc, "id", None):
+                    slot["id"] = tc.id
+                fn = getattr(tc, "function", None)
+                if fn is not None:
+                    if getattr(fn, "name", None):
+                        slot["name"] = fn.name
+                    if getattr(fn, "arguments", None):
+                        slot["arguments"] += fn.arguments
         llm_ms += (time.perf_counter() - t0) * 1000.0
-        tool_calls = resp.choices[0].message.tool_calls or []
-        if not tool_calls:
+
+        if not calls:  # streamed content was the final answer
             break
+
+        ordered = [calls[i] for i in sorted(calls)]
         messages.append({
-            "role": "assistant", "content": resp.choices[0].message.content or "",
+            "role": "assistant", "content": content,
             "tool_calls": [
-                {"id": tc.id, "type": "function",
-                 "function": {"name": tc.function.name, "arguments": tc.function.arguments}}
-                for tc in tool_calls
+                {"id": s["id"], "type": "function",
+                 "function": {"name": s["name"], "arguments": s["arguments"]}}
+                for s in ordered
             ],
         })
-        for tc in tool_calls:
-            name = tc.function.name
+        for s in ordered:
+            name = s["name"]
             used_tools.append(name)
+            yield "status", f"🔧 {name}…"
             try:
-                args = json.loads(tc.function.arguments or "{}")
+                args = json.loads(s["arguments"] or "{}")
             except json.JSONDecodeError:
                 args = {}
             result = dispatch(name, args)
             tool_results.append({"name": name, "args": args, "result": result})
             messages.append({
-                "role": "tool", "tool_call_id": tc.id, "name": name,
+                "role": "tool", "tool_call_id": s["id"], "name": name,
                 "content": json.dumps(result, ensure_ascii=False),
             })
-
-    # Phase B: stream the final answer. tool_choice="none" forces a text answer from the
-    # tool results already in the message list; fall back to dropping tools if a provider
-    # rejects that value.
-    t0 = time.perf_counter()
-    try:
-        stream = client.chat.completions.create(
-            model=config.CHAT_MODEL, messages=messages,
-            tools=TOOL_SCHEMAS, tool_choice="none", temperature=0.2, stream=True,
-        )
-    except Exception:
-        stream = client.chat.completions.create(
-            model=config.CHAT_MODEL, messages=messages, temperature=0.2, stream=True,
-        )
-    for chunk in stream:
-        choices = getattr(chunk, "choices", None)
-        if not choices:
-            continue
-        delta = getattr(choices[0].delta, "content", None)
-        if delta:
-            yield delta
-    llm_ms += (time.perf_counter() - t0) * 1000.0
+    else:
+        yield "token", "Sorry, I couldn't complete that. Please try rephrasing."
 
     meta["tools_used"] = used_tools
     meta["tool_results"] = tool_results

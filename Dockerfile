@@ -1,12 +1,10 @@
-# Kisan Mitra — container image for the Gradio voice app.
+# Kisan Mitra — container image for the Streamlit voice chat app.
 FROM python:3.12-slim
 
 # Keep Python lean and unbuffered for clean container logs.
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    PIP_NO_CACHE_DIR=1 \
-    GRADIO_SERVER_NAME=0.0.0.0 \
-    GRADIO_SERVER_PORT=7860
+    PIP_NO_CACHE_DIR=1
 
 WORKDIR /app
 
@@ -17,5 +15,6 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 COPY . .
 
 # SARVAM_API_KEY is provided at runtime: docker run -e SARVAM_API_KEY=sk_...
+# Shell form so $PORT (set by Render/Cloud Run) expands; defaults to 7860 locally.
 EXPOSE 7860
-CMD ["python", "app.py"]
+CMD streamlit run streamlit_app.py --server.port ${PORT:-7860} --server.address 0.0.0.0 --server.headless true --browser.gatherUsageStats false

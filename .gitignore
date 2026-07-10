@@ -17,7 +17,6 @@ myenv/
 outputs/
 *.wav
 *.mp3
-.gradio/
 
 # OS / editor
 .DS_Store

@@ -23,8 +23,9 @@ LLM-as-judge on sarvam-105b).
 | Speech in/out | `src/sarvam_client.py` | Saaras STT, Bulbul TTS, Translate — each returns `(result, ms)` |
 | Agent runtime | `src/agent.py` | explicit bounded tool-calling loop over Sarvam-30B (OpenAI-compatible endpoint) |
 | Tools | `src/tools.py` | **single registry** (`REGISTRY`) → schemas + dispatch |
-| Orchestration | `src/pipeline.py` | audio → STT → agent → TTS, per-stage timing |
-| UI | `app.py` | Gradio; Hugging Face Spaces entry point |
+| Orchestration | `src/pipeline.py` | audio → STT → agent → TTS, per-stage timing (used by eval) |
+| Streaming | `src/agent.py::run_agent_stream` | single-pass streaming for the chat UI; yields `(kind, text)` events |
+| UI | `streamlit_app.py` | Streamlit multi-turn voice chat; app entry point |
 | MCP | `mcp_server/server.py` | exposes the same `src/tools.py` functions to any MCP client |
 | Eval | `eval/` | `metrics.py` (WER + percentiles, key-free), `run_eval.py`, `judge.py` |
 
@@ -40,13 +41,13 @@ pip install -r requirements.txt        # + `pip install ruff pytest` for dev
 cp .env.example .env                    # add SARVAM_API_KEY (see below)
 
 # run
-python app.py                           # Gradio voice UI
+streamlit run streamlit_app.py          # Streamlit voice chat UI
 python -m src.agent "Aaj tamatar ka bhaav?"   # agent from CLI
 python mcp_server/server.py             # MCP server (stdio)
 
 # quality gates (run before every commit)
 python eval/metrics.py                  # key-free self-test — MUST pass
-pytest -q                               # 35 tests, no network, no key — MUST pass
+pytest -q                               # 39 tests, no network, no key — MUST pass
 ruff check .                            # lint — MUST pass
 
 # eval (needs SARVAM_API_KEY)

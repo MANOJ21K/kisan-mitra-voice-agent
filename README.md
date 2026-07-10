@@ -25,13 +25,14 @@ Indian-language speech, reasoning, and speech synthesis stay in a single stack.
 
 ## Features
 
+- **Streaming multi-turn chat** — a Streamlit conversation where the reply streams token by token (single-pass: tools resolve inline, then the answer streams) and the voiceover autoplays.
 - **Full voice loop** — speech in, speech out, in the farmer's own language (7 languages).
 - **Grounded tool-calling agent** — an explicit, bounded loop over Sarvam-30B that calls tools instead of hallucinating prices or dates.
 - **Live data** — real weather (Open-Meteo) and real mandi prices (data.gov.in Agmarknet), with graceful `{error: ...}` fallback when an upstream API is down.
 - **MCP server** — the same four tools exposed over the Model Context Protocol for any MCP client (Claude Desktop, Cursor, custom agents).
 - **Evaluation harness** — tool-selection accuracy, grounded-answer keywords, WER, latency p50/p95, and an **LLM-as-judge on sarvam-105b** scoring faithfulness and spoken-friendliness.
 - **Latency as a first-class metric** — every stage is timed and surfaced in both the UI and the eval report.
-- **Tested and CI-gated** — 35 unit tests (network and LLM fully mocked), linted and run on Python 3.11 and 3.12.
+- **Tested** — 39 unit tests (network and LLM fully mocked, key-free), lint-clean via ruff.
 
 ## Prerequisites
 
@@ -63,11 +64,12 @@ cp .env.example .env    # then add your SARVAM_API_KEY
 ### Run the voice app
 
 ```bash
-python app.py
+streamlit run streamlit_app.py
 ```
 
-Opens a Gradio UI with a microphone tab and a text tab. Each turn shows the transcript,
-the spoken reply, which tools fired, and the per-stage latency.
+Opens a **Streamlit chat**: speak or type in a single multi-turn conversation. The reply
+**streams in token by token**, the **Bulbul voiceover autoplays** when the text finishes,
+and each turn shows which tools fired plus per-stage latency.
 
 ### Query the agent from the CLI
 
@@ -142,7 +144,7 @@ curated reference data (stable facts, labelled as such in the tool output), not 
 pip install ruff pytest
 ruff check .            # lint
 python eval/metrics.py  # key-free metrics self-test
-pytest -q               # 35 tests — network and LLM mocked, no API key needed
+pytest -q               # 39 tests — network and LLM mocked, no API key needed
 ```
 
 The suite is network-free and key-free (mocked APIs and LLM), so it runs anywhere without credentials.
@@ -151,7 +153,7 @@ The suite is network-free and key-free (mocked APIs and LLM), so it runs anywher
 
 ```
 kisan-mitra-voice-agent/
-├── app.py                 # Gradio voice UI — app entry point
+├── streamlit_app.py       # Streamlit voice chat — app entry point
 ├── src/
 │   ├── config.py          # keys, base URLs, model ids, languages, data-source config
 │   ├── sarvam_client.py   # Saaras STT · Bulbul TTS · Translate (each returns latency)
@@ -164,7 +166,7 @@ kisan-mitra-voice-agent/
 │   ├── judge.py           # LLM-as-judge on sarvam-105b
 │   ├── run_eval.py        # golden-set runner (--judge, --speak, --n)
 │   └── golden_set.jsonl   # 12 labelled test cases (incl. edge cases)
-├── tests/                 # 35 pytest tests — mocked network + LLM, no key
+├── tests/                 # 39 pytest tests — mocked network + LLM, no key
 ├── docs/architecture.md   # diagram + design rationale
 ├── CLAUDE.md              # conventions for contributors and AI agents
 ├── Dockerfile
@@ -182,7 +184,9 @@ The live demo runs on Render's free tier, deployed from the `Dockerfile` via `re
 1. On [Render](https://render.com): **New +** → **Blueprint** → connect this repo.
 2. Render reads `render.yaml` and provisions the `kisan-mitra` web service.
 3. Set `SARVAM_API_KEY` (and optionally `DATA_GOV_IN_API_KEY`) as environment variables when prompted.
-4. Apply — Render builds the Docker image and serves the app. The free plan sleeps after 15 min idle and cold-starts on the next request.
+4. Apply — Render builds the Docker image and serves the app. The free plan sleeps after 15 min idle and cold-starts (~50s) on the next request.
+
+**Keep-warm (kills the cold start):** point a free [UptimeRobot](https://uptimerobot.com) HTTP monitor at `https://<your-app>.onrender.com/_stcore/health` on a 5-minute interval so the instance never idles out. This is the single biggest latency win on the free tier.
 
 ### Docker
 

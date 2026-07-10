@@ -1,4 +1,4 @@
-# Render blueprint — one-click deploy of the Gradio app from the Dockerfile.
+# Render blueprint — one-click deploy of the Streamlit app from the Dockerfile.
 # New + → Blueprint → pick this repo → set SARVAM_API_KEY when prompted.
 services:
   - type: web

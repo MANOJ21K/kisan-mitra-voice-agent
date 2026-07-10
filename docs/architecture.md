@@ -44,7 +44,7 @@ flowchart LR
 | Tools | `src/tools.py` | 4 farmer tools + JSON schemas; one registry shared with MCP |
 | Speech out | `src/sarvam_client.py` → `synthesize` | Bulbul v3, decodes base64 audio + ms |
 | Orchestration | `src/pipeline.py` | wires the three stages, captures asr/llm/tts/total ms |
-| UI | `app.py` | Gradio mic + text tabs; HF Spaces entry point |
+| UI | `streamlit_app.py` | Streamlit streaming multi-turn voice chat (mic + text) |
 | MCP | `mcp_server/server.py` | exposes the same tools to external MCP clients |
 | Eval | `eval/` | WER, tool accuracy, answer keywords, latency p50/p95, LLM-as-judge |
 
